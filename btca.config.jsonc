@@ -1,0 +1,39 @@
+{
+  "$schema": "https://btca.dev/btca.schema.json",
+  "baseDir": ".btca",
+  "model": "claude-haiku-4-5",
+  "provider": "opencode",
+  "providerTimeoutMs": 300000,
+  "resources": [
+    {
+      "name": "nextDocs",
+      "type": "git",
+      "url": "https://github.com/vercel/next.js",
+      "branch": "canary",
+      "searchPath": "docs",
+      "specialNotes": "Next.js docs (App Router + static export)."
+    },
+    {
+      "name": "nextExamples",
+      "type": "git",
+      "url": "https://github.com/vercel/next.js",
+      "branch": "canary",
+      "searchPath": "examples",
+      "specialNotes": "Runnable example apps."
+    },
+    {
+      "name": "tailwindDocs",
+      "type": "git",
+      "url": "https://github.com/tailwindlabs/tailwindcss.com",
+      "branch": "main",
+      "searchPath": "src/docs"
+    },
+    {
+      "name": "virtualDocs",
+      "type": "git",
+      "url": "https://github.com/TanStack/virtual",
+      "branch": "main",
+      "searchPath": "docs"
+    }
+  ]
+}
