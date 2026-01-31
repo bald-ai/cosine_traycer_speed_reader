@@ -6,11 +6,12 @@ import {
   useEffect,
   useRef,
   useState,
+  useCallback,
   type ReactNode
 } from "react";
 import type { Mode, Position } from "@/types/reading";
 import { useBook } from "./BookContext";
-import { calculatePercentComplete } from "@/lib/utils/bookHelpers";
+import { calculatePercentComplete, findChapterForParagraph } from "@/lib/utils/bookHelpers";
 
 type ReadingContextValue = {
   mode: Mode;
@@ -19,6 +20,7 @@ type ReadingContextValue = {
   setMode: (mode: Mode) => void;
   setPosition: (position: Position) => void;
   setHighlightedWord: (position: Position | null) => void;
+  saveProgress: (overrides?: { mode?: Mode; position?: Position }) => void;
 };
 
 const ReadingContext = createContext<ReadingContextValue | undefined>(undefined);
@@ -42,6 +44,22 @@ export function ReadingProvider(props: ProviderProps) {
   const [highlightedWord, setHighlightedWordState] = useState<Position | null>(null);
 
   const saveTimeoutRef = useRef<number | null>(null);
+  const positionRef = useRef<Position>(position);
+  const modeRef = useRef<Mode>(mode);
+  const bookRef = useRef(book);
+  const lastChapterIndexRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
+
+  useEffect(() => {
+    bookRef.current = book;
+  }, [book]);
 
   // Load last progress on mount
   useEffect(() => {
@@ -69,51 +87,111 @@ export function ReadingProvider(props: ProviderProps) {
     }
   }, [bookId]);
 
-  // Persist progress whenever position or mode changes
+  const saveProgress = useCallback((overrides?: { mode?: Mode; position?: Position }) => {
+    if (typeof window === "undefined") return;
+    const currentBook = bookRef.current;
+    if (!currentBook) return;
+
+    const currentPosition = overrides?.position ?? positionRef.current;
+    const currentMode = overrides?.mode ?? modeRef.current;
+    const payload = {
+      bookId,
+      paragraphId: currentPosition.paragraphId,
+      wordIndex: currentPosition.wordIndex,
+      mode: currentMode,
+      lastReadAt: Date.now(),
+      percentComplete: calculatePercentComplete(currentBook, currentPosition)
+    };
+
+    const key = `speedreader:progress:${bookId}`;
+    try {
+      window.localStorage.setItem(key, JSON.stringify(payload));
+    } catch {
+      // ignore quota errors for MVP
+    }
+  }, [bookId]);
+
+  // Autosave in normal mode (debounced)
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!book) return;
 
-    const payload = {
-      bookId,
-      paragraphId: position.paragraphId,
-      wordIndex: position.wordIndex,
-      mode,
-      lastReadAt: Date.now(),
-      percentComplete: calculatePercentComplete(book, position)
-    };
-
-    const key = `speedreader:progress:${bookId}`;
-
-    if (mode === "normal") {
+    if (mode !== "normal") {
       if (saveTimeoutRef.current != null) {
         window.clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
       }
-      saveTimeoutRef.current = window.setTimeout(() => {
-        try {
-          window.localStorage.setItem(key, JSON.stringify(payload));
-        } catch {
-          // ignore quota errors for MVP
-        }
-      }, 1000);
-    } else {
-      try {
-        window.localStorage.setItem(key, JSON.stringify(payload));
-      } catch {
-        // ignore quota errors for MVP
-      }
+      return;
     }
-  }, [book, bookId, mode, position]);
+
+    if (saveTimeoutRef.current != null) {
+      window.clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = window.setTimeout(() => {
+      saveProgress();
+    }, 1200);
+
+    return () => {
+      if (saveTimeoutRef.current != null) {
+        window.clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+    };
+  }, [book, mode, position, saveProgress]);
+
+  // Save when crossing into a new chapter
+  useEffect(() => {
+    if (!book) return;
+    const chapter = findChapterForParagraph(book, position.paragraphId);
+    const nextIndex = chapter ? chapter.index : null;
+    if (lastChapterIndexRef.current === null) {
+      lastChapterIndexRef.current = nextIndex;
+      return;
+    }
+    if (nextIndex !== lastChapterIndexRef.current) {
+      lastChapterIndexRef.current = nextIndex;
+      saveProgress();
+    }
+  }, [book, position.paragraphId, saveProgress]);
+
+  useEffect(() => {
+    lastChapterIndexRef.current = null;
+  }, [book?.id]);
+
+  // Save on tab close / hide
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handlePageHide = () => {
+      saveProgress();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        saveProgress();
+      }
+    };
+
+    window.addEventListener("pagehide", handlePageHide);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [saveProgress]);
 
   const setMode = (nextMode: Mode) => {
+    modeRef.current = nextMode;
     setModeState(nextMode);
     if (nextMode === "speed") {
       // Clear any existing highlight when entering speed mode
       setHighlightedWordState(null);
     }
+    saveProgress({ mode: nextMode });
   };
 
   const setPosition = (next: Position) => {
+    positionRef.current = next;
     setPositionState(next);
   };
 
@@ -129,7 +207,8 @@ export function ReadingProvider(props: ProviderProps) {
         highlightedWord,
         setMode,
         setPosition,
-        setHighlightedWord
+        setHighlightedWord,
+        saveProgress
       }}
     >
       {children}

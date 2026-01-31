@@ -8,6 +8,7 @@ import {
   type ReactNode
 } from "react";
 import type { Book } from "@/types/book";
+import { primeBookTokenCache } from "@/lib/utils/tokenCache";
 
 type BookContextValue = {
   book: Book | null;
@@ -66,6 +67,13 @@ export function BookProvider(props: ProviderProps) {
 
         if (!cancelled) {
           setBook(parsed);
+          if (typeof window !== "undefined") {
+            window.setTimeout(() => {
+              if (!cancelled) {
+                primeBookTokenCache(parsed);
+              }
+            }, 0);
+          }
         }
       } catch (err) {
         if (!cancelled) {

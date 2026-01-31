@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, AnimatePresence } from "framer-motion";
 import type { Chapter } from "@/types/book";
 
 type ChapterMenuProps = {
@@ -13,51 +14,104 @@ type ChapterMenuProps = {
 export default function ChapterMenu(props: ChapterMenuProps) {
   const { isOpen, chapters, currentChapterIndex, onSelect, onClose } = props;
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-30 flex items-start justify-center bg-black/50 backdrop-blur-sm">
-      <div className="mt-16 w-full max-w-md rounded-b-2xl bg-slate-950 border border-slate-800 border-t-slate-700/80 shadow-xl max-h-[60vh] overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-          <h2 className="text-sm font-semibold tracking-tight">Chapters</h2>
-          <button
-            type="button"
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-30 flex items-start justify-center pt-20"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          {/* Backdrop */}
+          <motion.div
+            className="absolute inset-0 bg-black/60 backdrop-blur-xl"
             onClick={onClose}
-            className="text-xs text-slate-400 hover:text-slate-200 px-2 py-1 rounded-md hover:bg-slate-800/60"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          />
+          
+          {/* Menu Container */}
+          <motion.div
+            className="relative w-full max-w-md mx-4 rounded-3xl bg-neutral-950/95 border border-neutral-800 
+              shadow-2xl shadow-black/50 max-h-[60vh] overflow-hidden"
+            initial={{ opacity: 0, y: -50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -30, scale: 0.95 }}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 30
+            }}
           >
-            Close
-          </button>
-        </div>
-        <div className="max-h-[50vh] overflow-y-auto py-1">
-          {chapters.length === 0 ? (
-            <div className="px-4 py-3 text-xs text-slate-400">No chapters detected.</div>
-          ) : (
-            <ul className="divide-y divide-slate-800/80 text-sm">
-              {chapters.map((chapter) => {
-                const isActive = currentChapterIndex === chapter.index;
-                return (
-                  <li key={chapter.index}>
-                    <button
-                      type="button"
-                      onClick={() => onSelect(chapter)}
-                      className={`w-full px-4 py-3 text-left transition ${
-                        isActive
-                          ? "bg-emerald-500/10 text-emerald-100"
-                          : "text-slate-200 hover:bg-slate-900"
-                      }`}
-                    >
-                      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-0.5">
-                        Chapter {chapter.index + 1}
-                      </div>
-                      <div className="text-sm">{chapter.title}</div>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      </div>
-    </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800/80">
+              <h2 className="text-sm font-semibold tracking-tight text-neutral-100">Chapters</h2>
+              <motion.button
+                type="button"
+                onClick={onClose}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="text-xs text-neutral-400 hover:text-neutral-200 px-3 py-1.5 rounded-lg 
+                  hover:bg-neutral-800/60 transition-colors duration-150"
+              >
+                Close
+              </motion.button>
+            </div>
+            
+            {/* Chapter List */}
+            <div className="max-h-[calc(60vh-4rem)] overflow-y-auto">
+              {chapters.length === 0 ? (
+                <div className="px-6 py-8 text-sm text-neutral-400 text-center">
+                  No chapters detected.
+                </div>
+              ) : (
+                <ul className="py-2">
+                  {chapters.map((chapter, i) => {
+                    const isActive = currentChapterIndex === chapter.index;
+                    return (
+                      <motion.li
+                        key={chapter.index}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{
+                          delay: i * 0.03,
+                          duration: 0.2,
+                          ease: [0.25, 0.46, 0.45, 0.94]
+                        }}
+                      >
+                        <motion.button
+                          type="button"
+                          onClick={() => onSelect(chapter)}
+                          whileHover={{ backgroundColor: isActive ? "rgba(139, 92, 246, 0.15)" : "rgba(64, 64, 64, 0.5)" }}
+                          whileTap={{ scale: 0.98 }}
+                          className={`w-full px-6 py-4 text-left transition-colors duration-150 border-l-2 ${
+                            isActive
+                              ? "bg-violet-500/10 border-violet-500 text-violet-100"
+                              : "border-transparent text-neutral-200 hover:bg-neutral-900/50"
+                          }`}
+                        >
+                          <div className={`text-[10px] uppercase tracking-[0.2em] mb-1 ${
+                            isActive ? "text-violet-400" : "text-neutral-500"
+                          }`}>
+                            Chapter {chapter.index + 1}
+                          </div>
+                          <div className={`text-sm font-medium ${
+                            isActive ? "text-violet-100" : "text-neutral-200"
+                          }`}>
+                            {chapter.title}
+                          </div>
+                        </motion.button>
+                      </motion.li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

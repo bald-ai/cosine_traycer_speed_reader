@@ -1,6 +1,6 @@
 import type { Book } from "@/types/book";
 import type { Position } from "@/types/reading";
-import { tokenizeParagraph } from "./wordExtraction";
+import { getTokensForParagraph, getWordCountForParagraph } from "./tokenCache";
 
 export function findChapterForParagraph(book: Book, paragraphId: number) {
   if (!book.chapters || book.chapters.length === 0) return null;
@@ -25,7 +25,7 @@ export function calculatePercentComplete(book: Book, position: Position): number
 
   for (let i = 0; i < book.paragraphs.length; i += 1) {
     const para = book.paragraphs[i];
-    const wordsInParagraph = tokenizeParagraph(para.text).length;
+    const wordsInParagraph = getWordCountForParagraph(book, para);
 
     if (i < position.paragraphId) {
       wordsBefore += wordsInParagraph;
@@ -47,7 +47,7 @@ export function getWordAtPosition(book: Book, position: Position): string | null
   const paragraph = book.paragraphs[position.paragraphId];
   if (!paragraph) return null;
 
-  const words = tokenizeParagraph(paragraph.text);
+  const words = getTokensForParagraph(book, paragraph);
   if (position.wordIndex < 0 || position.wordIndex >= words.length) {
     return null;
   }
@@ -59,7 +59,7 @@ export function getNextPosition(book: Book, position: Position): Position | null
   const paragraph = book.paragraphs[position.paragraphId];
   if (!paragraph) return null;
 
-  const words = tokenizeParagraph(paragraph.text);
+  const words = getTokensForParagraph(book, paragraph);
   if (position.wordIndex + 1 < words.length) {
     return {
       paragraphId: position.paragraphId,
@@ -70,7 +70,7 @@ export function getNextPosition(book: Book, position: Position): Position | null
   let nextParagraphId = position.paragraphId + 1;
   while (nextParagraphId < book.paragraphs.length) {
     const next = book.paragraphs[nextParagraphId];
-    const nextWords = tokenizeParagraph(next.text);
+    const nextWords = getTokensForParagraph(book, next);
     if (nextWords.length === 0) {
       nextParagraphId += 1;
       continue;

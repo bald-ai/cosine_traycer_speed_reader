@@ -10,8 +10,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@tanstack/react-virtual": "^3.13.18",
     "cheerio": "^1.0.0-rc.12",
     "epub2": "^3.0.2",
+    "framer-motion": "^12.29.2",
     "next": "14.2.5",
     "react": "18.3.1",
     "react-dom": "18.3.1"

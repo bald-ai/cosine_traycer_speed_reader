@@ -1,19 +1,6 @@
-# Project agent notes
-
-## btca
-
-When you need up-to-date information about technologies used in this project, ask the user if they'd like you to use btca (Better Context) to research.
-
-**Available resources**: nextDocs, nextExamples, tailwindDocs, virtualDocs
-
-### Usage
-
-```bash
-btca ask -r <resource> -q "<question>"
-```
-
-Use multiple `-r` flags to query multiple resources at once:
-
-```bash
-btca ask -r nextDocs -r tailwindDocs -q "How do I set up Tailwind in a Next.js App Router project?"
-```
+Prototype mode (figure out what you want)
+- Keep clarity and naming rules.
+- Skip strict test/coverage gates.
+- Allow edge-case notes instead of full handling.
+- Avoid new dependencies unless they unlock a key experiment.
+- Keep files reasonably small but don’t over-refactor.

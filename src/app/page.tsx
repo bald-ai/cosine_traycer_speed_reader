@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import BookCard from "@/components/library/BookCard";
 
@@ -15,9 +16,9 @@ export default function LibraryPage() {
   const [progress, setProgress] = useState<ProgressState | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
     try {
-      const raw = window.localStorage.getItem(`speedreader:progress:${BOOK_ID}`);
+      if (typeof window === "undefined") return;
+      const raw = (window as Window).localStorage.getItem(`speedreader:progress:${BOOK_ID}`);
       if (!raw) return;
       const parsed = JSON.parse(raw) as { percentComplete?: number };
       if (typeof parsed.percentComplete === "number") {
@@ -29,23 +30,90 @@ export default function LibraryPage() {
   }, []);
 
   return (
-    <main className="min-h-screen flex flex-col items-center px-4 py-8 bg-slate-950 text-slate-50">
-      <div className="w-full max-w-md space-y-6">
-        <header className="text-center mb-4">
-          <h1 className="text-3xl font-semibold tracking-tight">Speed Reading</h1>
-          <p className="text-sm text-slate-400 mt-2">
-            Practice rapid serial visual presentation (RSVP) and switch to normal reading whenever you need
-            more context.
-          </p>
-        </header>
-        <section>
+    <main className="min-h-screen flex flex-col items-center px-4 py-8 bg-neutral-950 text-neutral-100 relative overflow-hidden">
+      {/* Background gradient decoration */}
+      <div className="absolute inset-0 bg-gradient-to-b from-neutral-950 via-neutral-900/20 to-neutral-950 pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-violet-500/5 rounded-full blur-3xl pointer-events-none" />
+      
+      <div className="w-full max-w-md space-y-8 relative z-10">
+        {/* Header */}
+        <motion.header 
+          className="text-center mb-2"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 border border-violet-500/20 mb-6"
+          >
+            <svg 
+              className="w-8 h-8 text-violet-400" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor" 
+              strokeWidth={1.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+            </svg>
+          </motion.div>
+          
+          <motion.h1 
+            className="text-4xl font-bold tracking-tight bg-gradient-to-r from-neutral-100 to-neutral-400 bg-clip-text text-transparent"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            Speed Reading
+          </motion.h1>
+          
+          <motion.p 
+            className="text-sm text-neutral-400 mt-3 max-w-xs mx-auto leading-relaxed"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            Practice rapid serial visual presentation (RSVP) and switch to normal reading whenever you need more context.
+          </motion.p>
+        </motion.header>
+
+        {/* Book Section */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          <motion.h2 
+            className="text-xs uppercase tracking-[0.2em] text-neutral-500 mb-4 px-1"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+          >
+            Your Library
+          </motion.h2>
+          
           <BookCard
             title="La Sangre de los Elfos"
             author="Andrzej Sapkowski"
             progress={progress?.percentComplete ?? 0}
             onClick={() => router.push(`/reader/${BOOK_ID}`)}
+            index={0}
           />
-        </section>
+        </motion.section>
+
+        {/* Footer */}
+        <motion.footer
+          className="text-center pt-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+        >
+          <p className="text-xs text-neutral-600">
+            Continue reading where you left off
+          </p>
+        </motion.footer>
       </div>
     </main>
   );
