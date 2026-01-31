@@ -10,7 +10,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import SettingsModal from "@/components/reader/SettingsModal";
 import ChapterMenu from "@/components/reader/ChapterMenu";
 import ProgressBar from "@/components/shared/ProgressBar";
-import { calculatePercentComplete } from "@/lib/utils/bookHelpers";
+
 import { getTokensForParagraph, getWordCountForParagraph } from "@/lib/utils/tokenCache";
 import type { Chapter, Paragraph } from "@/types/book";
 import type { Position } from "@/types/reading";
@@ -70,6 +70,7 @@ export default function NormalReadingMode() {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const hasScrolledToInitialPosition = useRef(false);
   const lastScrollUpdateRef = useRef<number>(0);
+  const initialScrollTimeoutRef = useRef<number | null>(null);
 
   const fontSizeClass = useMemo(() => {
     switch (settings.fontSize) {
@@ -122,15 +123,11 @@ export default function NormalReadingMode() {
     return mapping;
   }, [book]);
 
-  const [currentChapterIndex, setCurrentChapterIndex] = useState<number | null>(null);
-
-  useEffect(() => {
+  const currentChapterIndex = useMemo(() => {
     if (!book || chapterIndexByParagraphId.length === 0) {
-      setCurrentChapterIndex(null);
-      return;
+      return null;
     }
-    const nextIndex = chapterIndexByParagraphId[position.paragraphId] ?? null;
-    setCurrentChapterIndex((prev) => (prev === nextIndex ? prev : nextIndex));
+    return chapterIndexByParagraphId[position.paragraphId] ?? null;
   }, [book, chapterIndexByParagraphId, position.paragraphId]);
 
   const currentChapter: Chapter | null = useMemo(() => {
@@ -150,21 +147,14 @@ export default function NormalReadingMode() {
     return totals;
   }, [book]);
 
-  const [progressPercent, setProgressPercent] = useState<number>(() => {
-    if (!book) return 0;
-    return Math.round(calculatePercentComplete(book, position));
-  });
-
-  useEffect(() => {
+  const progressPercent = useMemo(() => {
     if (!book || cumulativeWordCounts.length === 0 || !book.totalWords) {
-      setProgressPercent(0);
-      return;
+      return 0;
     }
 
     const paragraphIndex = position.paragraphId;
     if (paragraphIndex < 0 || paragraphIndex >= cumulativeWordCounts.length) {
-      setProgressPercent(0);
-      return;
+      return 0;
     }
 
     const wordsBefore = paragraphIndex > 0 ? cumulativeWordCounts[paragraphIndex - 1] : 0;
@@ -175,10 +165,7 @@ export default function NormalReadingMode() {
       Math.min(100, Math.round(((wordsBefore + clampedIndex) / book.totalWords) * 100))
     );
 
-    setProgressPercent((prev) => {
-      if (prev === percent) return prev;
-      return percent;
-    });
+    return percent;
   }, [book, cumulativeWordCounts, position.paragraphId, position.wordIndex]);
 
   const rowVirtualizer = useVirtualizer({
@@ -212,12 +199,48 @@ export default function NormalReadingMode() {
   useEffect(() => {
     if (!book || hasScrolledToInitialPosition.current) return;
     hasScrolledToInitialPosition.current = true;
-    
+
     const targetPos = highlightedWord ?? position;
-    setTimeout(() => {
+    initialScrollTimeoutRef.current = window.setTimeout(() => {
       scrollToPosition(targetPos, false);
     }, 50);
+
+    return () => {
+      if (initialScrollTimeoutRef.current !== null) {
+        window.clearTimeout(initialScrollTimeoutRef.current);
+      }
+    };
   }, [book, position, highlightedWord, scrollToPosition]);
+
+  // Scroll to highlighted word when it changes (e.g., switching from speed mode)
+  useEffect(() => {
+    if (!book || !highlightedWord) return;
+
+    // Use requestAnimationFrame to ensure DOM is updated
+    requestAnimationFrame(() => {
+      const wordEl = scrollContainerRef.current?.querySelector(
+        `[data-paragraph-id="${highlightedWord.paragraphId}"][data-word-index="${highlightedWord.wordIndex}"]`
+      );
+      if (wordEl) {
+        wordEl.scrollIntoView({ block: "center", behavior: "smooth" });
+      } else {
+        // If element not in DOM yet (virtualization), scroll to paragraph first
+        const index = paragraphIndexById.get(highlightedWord.paragraphId);
+        if (index !== undefined) {
+          rowVirtualizer.scrollToIndex(index, { align: "center", behavior: "smooth" });
+          // Try again after scrolling
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              const wordElRetry = scrollContainerRef.current?.querySelector(
+                `[data-paragraph-id="${highlightedWord.paragraphId}"][data-word-index="${highlightedWord.wordIndex}"]`
+              );
+              wordElRetry?.scrollIntoView({ block: "center", behavior: "smooth" });
+            });
+          });
+        }
+      }
+    });
+  }, [book, highlightedWord, paragraphIndexById, rowVirtualizer]);
 
   const handleScroll = useCallback(() => {
     if (!book || !scrollContainerRef.current) return;

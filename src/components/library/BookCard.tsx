@@ -1,7 +1,33 @@
 "use client";
 
-import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
+
+const MotionButton = dynamic(
+  () => import("framer-motion").then((m) => ({ default: m.motion.button })),
+  { ssr: false }
+);
+
+const MotionDiv = dynamic(
+  () => import("framer-motion").then((m) => ({ default: m.motion.div })),
+  { ssr: false }
+);
 import type { MouseEventHandler } from "react";
+
+const BOOK_ICON = (
+  <svg
+    className="w-8 h-8 text-violet-400/60"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={1.5}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
+    />
+  </svg>
+);
 
 type BookCardProps = {
   title: string;
@@ -16,7 +42,7 @@ export default function BookCard(props: BookCardProps) {
   const clampedProgress = Math.max(0, Math.min(100, Math.round(progress)));
 
   return (
-    <motion.button
+    <MotionButton
       type="button"
       onClick={onClick}
       initial={{ opacity: 0, y: 20 }}
@@ -40,15 +66,7 @@ export default function BookCard(props: BookCardProps) {
       <div className="flex items-start gap-4">
         <div className="h-20 w-14 shrink-0 rounded-lg bg-gradient-to-br from-violet-600/20 to-cyan-600/20 
           border border-violet-500/20 flex items-center justify-center overflow-hidden">
-          <svg 
-            className="w-8 h-8 text-violet-400/60" 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor" 
-            strokeWidth={1.5}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-          </svg>
+          {BOOK_ICON}
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-semibold tracking-tight text-neutral-100 truncate">{title}</h2>
@@ -59,7 +77,7 @@ export default function BookCard(props: BookCardProps) {
               <span className="font-medium text-neutral-300">{clampedProgress}%</span>
             </div>
             <div className="h-1.5 w-full rounded-full bg-neutral-800 overflow-hidden">
-              <motion.div
+              <MotionDiv
                 className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400"
                 initial={{ width: 0 }}
                 animate={{ width: `${clampedProgress}%` }}
@@ -69,6 +87,6 @@ export default function BookCard(props: BookCardProps) {
           </div>
         </div>
       </div>
-    </motion.button>
+    </MotionButton>
   );
 }

@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useCallback,
+  useMemo,
   type ReactNode
 } from "react";
 import type { Mode, Position } from "@/types/reading";
@@ -111,6 +112,9 @@ export function ReadingProvider(props: ProviderProps) {
     }
   }, [bookId]);
 
+  const saveProgressRef = useRef(saveProgress);
+  saveProgressRef.current = saveProgress;
+
   // Autosave in normal mode (debounced)
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -128,7 +132,7 @@ export function ReadingProvider(props: ProviderProps) {
       window.clearTimeout(saveTimeoutRef.current);
     }
     saveTimeoutRef.current = window.setTimeout(() => {
-      saveProgress();
+      saveProgressRef.current?.();
     }, 1200);
 
     return () => {
@@ -137,7 +141,7 @@ export function ReadingProvider(props: ProviderProps) {
         saveTimeoutRef.current = null;
       }
     };
-  }, [book, mode, position, saveProgress]);
+  }, [book, mode, position]);
 
   // Save when crossing into a new chapter
   useEffect(() => {
@@ -150,9 +154,9 @@ export function ReadingProvider(props: ProviderProps) {
     }
     if (nextIndex !== lastChapterIndexRef.current) {
       lastChapterIndexRef.current = nextIndex;
-      saveProgress();
+      saveProgressRef.current?.();
     }
-  }, [book, position.paragraphId, saveProgress]);
+  }, [book, position.paragraphId]);
 
   useEffect(() => {
     lastChapterIndexRef.current = null;
@@ -163,11 +167,11 @@ export function ReadingProvider(props: ProviderProps) {
     if (typeof window === "undefined") return;
 
     const handlePageHide = () => {
-      saveProgress();
+      saveProgressRef.current?.();
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
-        saveProgress();
+        saveProgressRef.current?.();
       }
     };
 
@@ -178,9 +182,9 @@ export function ReadingProvider(props: ProviderProps) {
       window.removeEventListener("pagehide", handlePageHide);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [saveProgress]);
+  }, []);
 
-  const setMode = (nextMode: Mode) => {
+  const setMode = useCallback((nextMode: Mode) => {
     modeRef.current = nextMode;
     setModeState(nextMode);
     if (nextMode === "speed") {
@@ -188,29 +192,32 @@ export function ReadingProvider(props: ProviderProps) {
       setHighlightedWordState(null);
     }
     saveProgress({ mode: nextMode });
-  };
+  }, [saveProgress]);
 
-  const setPosition = (next: Position) => {
+  const setPosition = useCallback((next: Position) => {
     positionRef.current = next;
     setPositionState(next);
-  };
+  }, []);
 
-  const setHighlightedWord = (next: Position | null) => {
+  const setHighlightedWord = useCallback((next: Position | null) => {
     setHighlightedWordState(next);
-  };
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({
+      mode,
+      position,
+      highlightedWord,
+      setMode,
+      setPosition,
+      setHighlightedWord,
+      saveProgress
+    }),
+    [mode, position, highlightedWord, setMode, setPosition, setHighlightedWord, saveProgress]
+  );
 
   return (
-    <ReadingContext.Provider
-      value={{
-        mode,
-        position,
-        highlightedWord,
-        setMode,
-        setPosition,
-        setHighlightedWord,
-        saveProgress
-      }}
-    >
+    <ReadingContext.Provider value={contextValue}>
       {children}
     </ReadingContext.Provider>
   );

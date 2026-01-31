@@ -38,60 +38,65 @@ export default function SpeedReadingMode() {
   const [wordKey, setWordKey] = useState<number>(0);
 
   const positionRef = useRef<Position | null>(position);
-  const timeoutRef = useRef<number | null>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
 
+  // Only sync positionRef from context when paused (user navigated externally)
+  // During playback, positionRef is managed by the tick loop
   useEffect(() => {
-    positionRef.current = position;
-  }, [position]);
+    if (isPaused) {
+      positionRef.current = position;
+    }
+  }, [position, isPaused]);
 
   useEffect(() => {
-    if (!book) return;
-    if (isPaused) return;
+    if (!book || isPaused) return;
 
-    let cancelled = false;
+    let frameId: number;
+    let lastWordTime = performance.now();
+    let rampIndex = 0;
 
-    function step(rampIndex: number) {
-      if (cancelled || isPaused) return;
-
+    const tick = (time: number) => {
       const currentPosition = positionRef.current;
       if (!currentPosition) {
         setMode("normal");
         return;
       }
 
-      const word = getWordAtPosition(book!, currentPosition);
-      if (!word) {
-        setMode("normal");
-        return;
-      }
-
-      setDisplayedWord(word);
-      setWordKey((prev) => prev + 1);
-      setPosition(currentPosition);
-
-      const nextPosition = getNextPosition(book!, currentPosition);
-      positionRef.current = nextPosition;
-
-      if (!nextPosition) {
-        setHighlightedWord(currentPosition);
-        setMode("normal");
-        return;
-      }
-
       const delay = calculateDelayForWord(settings.wpm, rampIndex);
-      timeoutRef.current = window.setTimeout(() => step(rampIndex + 1), delay);
-    }
 
-    step(0);
+      if (time - lastWordTime >= delay) {
+        lastWordTime = time;
+        rampIndex++;
+
+        const word = getWordAtPosition(book, currentPosition);
+        if (!word) {
+          setMode("normal");
+          return;
+        }
+
+        setDisplayedWord(word);
+        setWordKey((prev) => prev + 1);
+        setPosition(currentPosition);
+
+        const nextPosition = getNextPosition(book, currentPosition);
+        positionRef.current = nextPosition;
+
+        if (!nextPosition) {
+          setHighlightedWord(currentPosition);
+          setMode("normal");
+          return;
+        }
+      }
+
+      frameId = requestAnimationFrame(tick);
+    };
+
+    frameId = requestAnimationFrame(tick);
 
     return () => {
-      cancelled = true;
-      if (timeoutRef.current != null) {
-        window.clearTimeout(timeoutRef.current);
-      }
+      cancelAnimationFrame(frameId);
     };
-  }, [book, isPaused, setMode, setPosition, setHighlightedWord, settings.wpm]);
+  }, [book, isPaused, settings.wpm, setMode, setPosition, setHighlightedWord]);
 
   useEffect(() => {
     if (!showControls || isPaused) {
@@ -132,9 +137,6 @@ export default function SpeedReadingMode() {
     setIsPaused(true);
     setShowControls(true);
     saveProgress();
-    if (timeoutRef.current != null) {
-      window.clearTimeout(timeoutRef.current);
-    }
   };
 
   const handleResume = () => {

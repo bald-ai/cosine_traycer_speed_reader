@@ -40,34 +40,30 @@ function useIsomorphicLayoutEffect(effect: () => void | (() => void), deps: Reac
   useEffectHook(effect, deps);
 }
 
+function getInitialSettings(): Settings {
+  if (typeof window === "undefined") return DEFAULT_SETTINGS;
+
+  try {
+    const raw = window.localStorage.getItem("speedreader:settings");
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<Settings>;
+      return { ...DEFAULT_SETTINGS, ...parsed };
+    }
+  } catch {
+    // ignore malformed settings
+  }
+
+  // Fallback to system preference for theme
+  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+  if (prefersDark) {
+    return { ...DEFAULT_SETTINGS, theme: "dark" };
+  }
+
+  return DEFAULT_SETTINGS;
+}
+
 export function SettingsProvider(props: { children: ReactNode }) {
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
-
-  // Load settings from localStorage on mount
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem("speedreader:settings");
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<Settings>;
-        setSettings((prev) => ({
-          ...prev,
-          ...parsed
-        }));
-        return;
-      }
-    } catch {
-      // ignore malformed settings
-    }
-
-    // Fallback to system preference for theme
-    if (typeof window !== "undefined") {
-      const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-      if (prefersDark) {
-        setSettings((prev) => ({ ...prev, theme: "dark" }));
-      }
-    }
-  }, []);
+  const [settings, setSettings] = useState<Settings>(getInitialSettings);
 
   // Persist settings and apply theme class
   useEffect(() => {
@@ -84,7 +80,7 @@ export function SettingsProvider(props: { children: ReactNode }) {
     } else {
       root.classList.remove("dark");
     }
-  }, [settings]);
+  }, [settings.wpm, settings.fontSize, settings.fontFamily, settings.theme]);
 
   const updateSettings = (partial: Partial<Settings>) => {
     setSettings((prev) => ({

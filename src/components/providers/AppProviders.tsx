@@ -6,17 +6,22 @@ import { SettingsProvider } from "@/contexts/SettingsContext";
 
 function ServiceWorkerRegistrar() {
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!("serviceWorker" in navigator)) return;
+    // Defer to after hydration using setTimeout
+    const timeoutId = setTimeout(() => {
+      if (typeof window === "undefined") return;
+      if (!("serviceWorker" in navigator)) return;
 
-    navigator.serviceWorker
-      .register("/sw.js", {
-        scope: "/",
-        updateViaCache: "none"
-      })
-      .catch(() => {
-        // ignore registration errors for MVP
-      });
+      navigator.serviceWorker
+        .register("/sw.js", {
+          scope: "/",
+          updateViaCache: "none"
+        })
+        .catch(() => {
+          // ignore registration errors for MVP
+        });
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   return null;
